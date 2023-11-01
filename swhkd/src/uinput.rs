@@ -7,8 +7,6 @@ use nix::ioctl_none;
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 
-ioctl_none!(rfkill_noinput, b'R', 1);
-
 pub fn create_uinput_device() -> Result<VirtualDevice, Box<dyn std::error::Error>> {
     let mut keys = AttributeSet::<Key>::new();
     for key in get_all_keys() {
@@ -35,20 +33,6 @@ pub fn create_uinput_switches_device() -> Result<VirtualDevice, Box<dyn std::err
         switches.insert(switch);
     }
 
-    // We have to disable rfkill-input to avoid blocking all radio devices. When
-    // a new device (virtual or physical) with the SW_RFKILL_ALL capability bit
-    // set appears, rfkill reacts immediately depending on the value bit. This
-    // value bit defaults to unset, which causes rfkill to use its default mode
-    // (which is eop - emergency power off). The uinput API does not give any
-    // way to set the corresponding value bit before creating the device, and we
-    // have no way to avoid rfkill acting upon the device creation or to change
-    // its default mode. Thus, we disable rfkill-input temporarily, hopefully
-    // fast enough that it won't impact anyone. rfkill-input will be enabled
-    // again when the file gets closed.
-    let rfkill_file = File::open("/dev/rfkill")?;
-    unsafe {
-        rfkill_noinput(rfkill_file.as_raw_fd())?;
-    }
     let device = VirtualDeviceBuilder::new()?
         .name("swhkd switches virtual output")
         .with_switches(&switches)?
@@ -300,7 +284,6 @@ pub fn get_all_keys() -> Vec<Key> {
         evdev::Key::KEY_BRIGHTNESS_AUTO,
         evdev::Key::KEY_DISPLAY_OFF,
         evdev::Key::KEY_WWAN,
-        evdev::Key::KEY_RFKILL,
         evdev::Key::KEY_MICMUTE,
         evdev::Key::BTN_0,
         evdev::Key::BTN_1,
@@ -632,7 +615,6 @@ pub fn get_all_switches() -> Vec<SwitchType> {
         SwitchType::SW_LID,
         SwitchType::SW_TABLET_MODE,
         SwitchType::SW_HEADPHONE_INSERT,
-        SwitchType::SW_RFKILL_ALL,
         SwitchType::SW_MICROPHONE_INSERT,
         SwitchType::SW_DOCK,
         SwitchType::SW_LINEOUT_INSERT,
