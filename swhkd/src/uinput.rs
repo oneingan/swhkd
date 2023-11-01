@@ -3,10 +3,6 @@ use evdev::{
     AttributeSet, Key, RelativeAxisType, SwitchType,
 };
 
-use nix::ioctl_none;
-use std::fs::File;
-use std::os::unix::io::AsRawFd;
-
 pub fn create_uinput_device() -> Result<VirtualDevice, Box<dyn std::error::Error>> {
     let mut keys = AttributeSet::<Key>::new();
     for key in get_all_keys() {
